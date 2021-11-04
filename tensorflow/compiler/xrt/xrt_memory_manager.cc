@@ -99,8 +99,7 @@ class XRTMemoryManager::DeviceContext {
   }
 
   Status CompactAllocations(XRTMemoryManager* memory_manager,
-                            xla::Backend* backend,
-                            se::DeviceMemoryAllocator* allocator) {
+                            xla::Backend* backend) {
     profiler::TraceMe trace_me("XRTMemoryManager::CompactAllocations",
                                /*level=*/2);
     auto timed = monitoring::MakeTimed(xrt_metrics::GetMemoryCompactCell());
@@ -132,8 +131,7 @@ class XRTMemoryManager::DeviceContext {
     // At this point we have released all the device memory we could release.
     // Load back the tuple allocations we have swapped out above.
     for (auto& it : swapped) {
-      auto swap_result_or =
-          it->tuple->SwapIn(memory_manager, backend, allocator);
+      auto swap_result_or = it->tuple->SwapIn(memory_manager, backend);
       if (!swap_result_or.ok()) {
         // If we failed to restored a pinned allocation, better to CHECK here
         // than wondering why XRTTupleAllocation calls fail with errors about
@@ -196,12 +194,11 @@ XRTMemoryManager::WorkingSet::~WorkingSet() {
   }
 }
 
-Status XRTMemoryManager::WorkingSet::LookupAndPin(
-    xla::Backend* backend, int64_t handle,
-    se::DeviceMemoryAllocator* allocator) {
+Status XRTMemoryManager::WorkingSet::LookupAndPin(xla::Backend* backend,
+                                                  int64_t handle) {
   TF_ASSIGN_OR_RETURN(auto tuple, memory_manager_->Lookup(handle));
   TF_RETURN_IF_ERROR(
-      tuple->PinAndSwapIn(memory_manager_.get(), backend, allocator).status());
+      tuple->PinAndSwapIn(memory_manager_.get(), backend).status());
   pinned_tuples_.push_back(std::move(tuple));
   return Status::OK();
 }
@@ -249,13 +246,12 @@ Status XRTMemoryManager::Release(int64_t handle) {
   return Status::OK();
 }
 
-Status XRTMemoryManager::CompactAllocations(
-    xla::Backend* backend, int device_ordinal,
-    se::DeviceMemoryAllocator* allocator) {
+Status XRTMemoryManager::CompactAllocations(xla::Backend* backend,
+                                            int device_ordinal) {
   DeviceContext* device_context = GetDeviceContext(device_ordinal,
                                                    /*create_if_missing=*/false);
   return device_context != nullptr
-             ? device_context->CompactAllocations(this, backend, allocator)
+             ? device_context->CompactAllocations(this, backend)
              : Status::OK();
 }
 
@@ -269,8 +265,8 @@ void XRTMemoryManager::ReleaseAllAllocations() {
 }
 
 xla::StatusOr<se::OwningDeviceMemory> XRTMemoryManager::Allocate(
-    xla::Backend* backend, int device_ordinal, size_t size,
-    se::DeviceMemoryAllocator* allocator) {
+    xla::Backend* backend, int device_ordinal, size_t size) {
+  se::DeviceMemoryAllocator* allocator = backend->memory_allocator();
   auto memory_or =
       allocator->Allocate(device_ordinal, size, /*retry_on_failure=*/false);
   if (memory_or.status().code() == error::RESOURCE_EXHAUSTED) {
@@ -355,9 +351,7 @@ Status XRTMemoryManager::TryFreeMemoryStep(MemoryReclaimContext* mrctx,
   }
   if (!mrctx->done_compacting) {
     mrctx->done_compacting = true;
-    if (device_context
-            ->CompactAllocations(this, mrctx->backend, mrctx->allocator)
-            .ok()) {
+    if (device_context->CompactAllocations(this, mrctx->backend).ok()) {
       return Status::OK();
     }
   }

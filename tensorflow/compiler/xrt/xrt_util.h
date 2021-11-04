@@ -78,8 +78,7 @@ xla::StatusOr<std::vector<RefPtr<XRTTupleAllocation>>> GetInputTupleAllocations(
     const std::vector<InputCoords>& input_coords,
     XRTMemoryManager::WorkingSet* working_set, xla::Backend* backend,
     int64_t num_input_shapes,
-    const std::function<xla::Shape(int64_t)>& shape_getter, bool release_inputs,
-    se::DeviceMemoryAllocator* allocator);
+    const std::function<xla::Shape(int64_t)>& shape_getter, bool release_inputs);
 
 Status RebuildOutputAliases(
     const RefPtr<XRTTupleAllocation>& output_tuple,
@@ -110,8 +109,7 @@ Status ExecuteChained(OpKernelContext* context,
                       xla::Backend* backend, int device_ordinal,
                       const xrt::XRTChainedExecutePlan& plan,
                       const xrt::XRTChainedExecuteConfig& config,
-                      const ChainedExecuteFn& execute_op,
-                      se::DeviceMemoryAllocator* allocator);
+                      const ChainedExecuteFn& execute_op);
 
 }  // namespace tensorflow
 

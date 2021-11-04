@@ -154,8 +154,7 @@ xla::StatusOr<RefPtr<XRTTupleAllocation>> AllocateOutputTuple(
 
   TF_RETURN_IF_ERROR(XRTTupleAllocation::CreateFromBuffer(
       output_shaped_buffer, output_host_shape, output_device_shape,
-      node_context->backend(), device_ordinal, &output_tuple,
-      node_context->backend()->memory_allocator()));
+      node_context->backend(), device_ordinal, &output_tuple));
   RefPtr<XRTTupleAllocation> output_tuple_ptr(output_tuple);
 
   // If the input tuples had to release some buffers in order to provide the
@@ -242,8 +241,7 @@ xla::StatusOr<xla::ExecutionOutput> ExecuteTPUProgram(
                          device_ordinal, rendezvous_key_base);
   };
   return memory_manager->Run<xla::ExecutionOutput>(
-      runfn, backend, device_ordinal, /*requested_free_size=*/0,
-      backend->memory_allocator());
+      runfn, backend, device_ordinal, /*requested_free_size=*/0);
 }
 
 // XRTExecuteOp
@@ -346,7 +344,7 @@ Status XRTExecuteOp::DoWork(OpKernelContext* context) {
       GetInputTupleAllocations(
           input_coords, &working_set, backend, executable.input_shapes_size(),
           [&](int64_t i) { return xla::Shape(executable.input_shapes(i)); },
-          release_inputs, backend->memory_allocator()));
+          release_inputs));
   auto get_buffers_fn = [&]() {
     return GetArgumentsBuffers(input_output_alias, input_tuples,
                                input_is_dynamic, release_inputs);
@@ -467,7 +465,7 @@ Status XRTExecuteChainedOp::DoWork(OpKernelContext* context) {
   };
 
   return ExecuteChained(context, memory_manager, backend, device_ordinal, plan,
-                        config, execute_op, backend->memory_allocator());
+                        config, execute_op);
 }
 
 }  // namespace
