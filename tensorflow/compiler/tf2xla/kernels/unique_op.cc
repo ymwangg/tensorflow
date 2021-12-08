@@ -252,7 +252,7 @@ class UniqueOp : public XlaOpKernel {
   }
 };
 
-REGISTER_XLA_OP(Name("Unique").Device(DEVICE_TPU_XLA_JIT), UniqueOp);
+REGISTER_XLA_OP(Name("Unique"), UniqueOp);
 
 }  // namespace
 }  // namespace tensorflow
