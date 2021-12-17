@@ -444,3 +444,247 @@ cuda_py_test(
         "//tensorflow/python/ops/linalg",
     ],
 )
+
+cuda_py_test(
+    name = "lu_op_test",
+    size = "small",
+    srcs = ["lu_op_test.py"],
+    xla_tags = [
+        "no_cuda_asan",  # times out
+    ],
+    deps = [
+        "//tensorflow/python:array_ops",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//tensorflow/python:math_ops",
+        "//tensorflow/python:platform",
+        "//tensorflow/python/ops/linalg",
+        "//third_party/py/numpy",
+    ],
+)
+
+tf_py_test(
+    name = "matrix_exponential_op_test",
+    size = "medium",
+    srcs = ["matrix_exponential_op_test.py"],
+    shard_count = 16,
+    tags = ["no_windows_gpu"],
+    deps = [
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "matrix_inverse_op_test",
+    size = "small",
+    srcs = ["matrix_inverse_op_test.py"],
+    tags = ["optonly"],
+    deps = [
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//tensorflow/python:math_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+tf_py_test(
+    name = "matrix_logarithm_op_test",
+    size = "medium",
+    srcs = ["matrix_logarithm_op_test.py"],
+    deps = [
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "matrix_solve_ls_op_test",
+    size = "medium",
+    srcs = ["matrix_solve_ls_op_test.py"],
+    tags = [
+        "noasan",  # TODO(b/337374867) fails with -fsanitize=null
+    ],
+    deps = [
+        "//tensorflow/python:array_ops",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//tensorflow/python:math_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "matrix_solve_op_test",
+    size = "medium",
+    srcs = ["matrix_solve_op_test.py"],
+    deps = [
+        "//tensorflow/python:array_ops",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "matrix_square_root_op_test",
+    size = "medium",
+    srcs = ["matrix_square_root_op_test.py"],
+    deps = [
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "matrix_triangular_solve_op_test",
+    size = "medium",
+    srcs = ["matrix_triangular_solve_op_test.py"],
+    shard_count = 3,
+    deps = [
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:linalg_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "normalize_op_test",
+    size = "medium",
+    srcs = ["normalize_op_test.py"],
+    shard_count = 20,
+    # TODO(b/117236102): Re-enable in msan build.
+    tags = [
+        "no_windows_gpu",
+        "nomsan",
+    ],
+    # TODO(b/208263392): Re-enable. tf.Squeeze op after tf.Where op doesn't reshape.
+    xla_enable_strict_auto_jit = False,
+    deps = [
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:nn",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "norm_op_test",
+    size = "medium",
+    srcs = ["norm_op_test.py"],
+    shard_count = 20,
+    # TODO(b/117236102): Re-enable in msan build.
+    tags = [
+        "no_windows_gpu",
+        "nomsan",
+    ],
+    # TODO(b/208263392): Re-enable. tf.Squeeze op after tf.Where op doesn't reshape.
+    xla_enable_strict_auto_jit = False,
+    deps = [
+        "//tensorflow/python:array_ops",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "qr_op_test",
+    size = "medium",
+    srcs = ["qr_op_test.py"],
+    shard_count = 20,
+    deps = [
+        "//tensorflow/python:array_ops",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//tensorflow/python:math_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "self_adjoint_eig_op_test",
+    size = "medium",
+    srcs = ["self_adjoint_eig_op_test.py"],
+    data = ["//tensorflow/python/kernel_tests/linalg/testdata:self_adjoint_eig_op_test_files"],
+    shard_count = 20,
+    tags = [
+        "no_windows",
+    ],
+    deps = [
+        "//tensorflow/python:array_ops",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//tensorflow/python:math_ops",
+        "//third_party/py/numpy",
+    ],
+    # TODO(b/127344411): This test passes because XLA does not actually cluster
+    # the self_adjoint_eig op.
+)
+
+cuda_py_test(
+    name = "svd_op_test",
+    size = "medium",
+    srcs = ["svd_op_test.py"],
+    shard_count = 30,
+    tags = [
+        "no_oss",  # b/117185141.
+        "nomsan",  # TODO(b/117236102): Re-enable in msan build.
+    ],
+    xla_tags = [
+        "no_cuda_asan",  # times out
+    ],
+    deps = [
+        "//tensorflow/python:array_ops",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:gradients_impl",
+        "//tensorflow/python:linalg_ops",
+        "//tensorflow/python:math_ops",
+        "//third_party/py/numpy",
+    ],
+    # TODO(b/127344411): This test passes because XLA does not actually cluster
+    # the svd op.
+)
+
+cuda_py_test(
+    name = "tridiagonal_matmul_op_test",
+    size = "medium",
+    srcs = ["tridiagonal_matmul_op_test.py"],
+    shard_count = 10,
+    deps = [
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//third_party/py/numpy",
+    ],
+)
+
+cuda_py_test(
+    name = "tridiagonal_solve_op_test",
+    size = "medium",
+    srcs = ["tridiagonal_solve_op_test.py"],
+    shard_count = 12,
+    tags = [
+        "no_oss",  # TODO(b/142818120): Re-enable.
+    ],
+    deps = [
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:framework_for_generated_wrappers",
+        "//tensorflow/python:linalg_ops",
+        "//third_party/py/numpy",
+    ],
+)
