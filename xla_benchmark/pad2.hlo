@@ -1,0 +1,7 @@
+HloModule module
+
+ENTRY main{
+  bitcast = f32[375054336]{0} parameter(0)
+  constant = f32[] constant(0)
+  ROOT pad.31 = f32[375080689]{0} pad(f32[375054336]{0} %bitcast, f32[] %constant), padding=0_26353
+}

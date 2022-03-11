@@ -1,0 +1,12 @@
+HloModule Module
+%AddComputation.3823 (x.2782: f32[], y.2783: f32[]) -> f32[] {
+  %x.2782 = f32[] parameter(0)
+  %y.2783 = f32[] parameter(1)
+  ROOT %add.2784 = f32[] add(f32[] %x.2782, f32[] %y.2783)
+}
+
+ENTRY main{
+  %bitcast.180 = f32[10240,512]{1,0} parameter(0)
+  %constant_368 = f32[] constant(0)
+  ROOT %reduce.111 = f32[10240]{0} reduce(f32[10240,512]{1,0} %bitcast.180, f32[] %constant_368), dimensions={1}, to_apply=%AddComputation.3823
+}

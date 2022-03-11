@@ -1,0 +1,6 @@
+HloModule Module
+ENTRY main {
+  x = f16[10240,512] parameter(0)
+  y = f16[512,3072]{0,1} parameter(1)
+  ROOT %dot.847 = f16[10240,3072]{1,0} dot(f16[10240,512]{1,0} x, f16[512,3072]{0,1} y), lhs_contracting_dims={1}, rhs_contracting_dims={0}
+}

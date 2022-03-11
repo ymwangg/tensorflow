@@ -1,0 +1,4 @@
+HloModule module
+ENTRY function {
+  ROOT %iota.10 = s64[12288,30522]{1,0} iota(), iota_dimension=1
+}

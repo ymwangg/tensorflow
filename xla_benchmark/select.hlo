@@ -1,0 +1,7 @@
+HloModule module
+ENTRY main{
+  %compare.52 = pred[12288,30522]{1,0} parameter(0)
+  %broadcast.2426 = f32[12288,30522]{1,0} parameter(1)
+  %broadcast.2425 = f32[12288,30522]{1,0} parameter(2)
+  ROOT %select.194 = f32[12288,30522]{1,0} select(pred[12288,30522]{1,0} %compare.52, f32[12288,30522]{1,0} %broadcast.2426, f32[12288,30522]{1,0} %broadcast.2425)
+}

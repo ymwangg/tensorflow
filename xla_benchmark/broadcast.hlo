@@ -1,0 +1,6 @@
+HloModule Module
+
+ENTRY main{
+  %bitcast.180 = s64[12288]{0} parameter(0)
+  ROOT %broadcast.2093 = s64[12288,30522]{1,0} broadcast(s64[12288]{0} %bitcast.180), dimensions={0}
+}

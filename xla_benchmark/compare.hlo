@@ -1,0 +1,7 @@
+HloModule module
+
+ENTRY main{
+  x = s64[12288,30522]{1,0} parameter(0)
+  y = s64[12288,30522]{1,0} parameter(1)
+  ROOT %compare.16 = pred[12288,30522]{1,0} compare(s64[12288,30522]{1,0} x, s64[12288,30522]{1,0} y), direction=EQ
+}

@@ -1,0 +1,7 @@
+HloModule Test
+
+ENTRY main { 
+  x = f16[10240,32128] parameter(0)
+  constant = f16[] constant(0)
+  ROOT %pad.25 = f16[10240,32400]{1,0} pad(f16[10240,32128]{1,0} x, f16[] constant), padding=0_0x0_272
+}

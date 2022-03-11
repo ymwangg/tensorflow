@@ -1,0 +1,45 @@
+HloModule IrToHlo.42
+
+ENTRY %IrToHlo.42 (p0.2: f32[768], p1.23: f32[12,512,768], p2.38: f32[768]) -> (f32[12,512,768]) {
+  %constant.3 = f32[] constant(0)
+  %reshape.4 = f32[1]{0} reshape(f32[] %constant.3)
+  %broadcast.5 = f32[1]{0} broadcast(f32[1]{0} %reshape.4), dimensions={0}
+  %reshape.6 = f32[] reshape(f32[1]{0} %broadcast.5)
+  %broadcast.7 = f32[6144]{0} broadcast(f32[] %reshape.6), dimensions={}
+  %constant.8 = f32[] constant(0)
+  %reshape.9 = f32[1]{0} reshape(f32[] %constant.8)
+  %broadcast.10 = f32[1]{0} broadcast(f32[1]{0} %reshape.9), dimensions={0}
+  %reshape.11 = f32[] reshape(f32[1]{0} %broadcast.10)
+  %broadcast.12 = f32[6144]{0} broadcast(f32[] %reshape.11), dimensions={}
+  %p1.23 = f32[12,512,768]{2,1,0} parameter(1)
+  %reshape.24 = f32[1,6144,768]{2,1,0} reshape(f32[12,512,768]{2,1,0} %p1.23)
+  %constant.18 = f32[] constant(1)
+  %reshape.19 = f32[1]{0} reshape(f32[] %constant.18)
+  %broadcast.20 = f32[1]{0} broadcast(f32[1]{0} %reshape.19), dimensions={0}
+  %reshape.21 = f32[] reshape(f32[1]{0} %broadcast.20)
+  %broadcast.22 = f32[6144]{0} broadcast(f32[] %reshape.21), dimensions={}
+  %constant.13 = f32[] constant(0)
+  %reshape.14 = f32[1]{0} reshape(f32[] %constant.13)
+  %broadcast.15 = f32[1]{0} broadcast(f32[1]{0} %reshape.14), dimensions={0}
+  %reshape.16 = f32[] reshape(f32[1]{0} %broadcast.15)
+  %broadcast.17 = f32[6144]{0} broadcast(f32[] %reshape.16), dimensions={}
+  %batch-norm-training.25 = (f32[1,6144,768]{2,1,0}, f32[6144]{0}, f32[6144]{0}) batch-norm-training(f32[1,6144,768]{2,1,0} %reshape.24, f32[6144]{0} %broadcast.22, f32[6144]{0} %broadcast.17), epsilon=1e-05, feature_index=1
+  %get-tuple-element.27 = f32[6144]{0} get-tuple-element((f32[1,6144,768]{2,1,0}, f32[6144]{0}, f32[6144]{0}) %batch-norm-training.25), index=1
+  %get-tuple-element.28 = f32[6144]{0} get-tuple-element((f32[1,6144,768]{2,1,0}, f32[6144]{0}, f32[6144]{0}) %batch-norm-training.25), index=2
+  %constant.29 = f32[] constant(1e-05)
+  %broadcast.30 = f32[6144]{0} broadcast(f32[] %constant.29), dimensions={}
+  %add.31 = f32[6144]{0} add(f32[6144]{0} %get-tuple-element.28, f32[6144]{0} %broadcast.30)
+  %rsqrt.32 = f32[6144]{0} rsqrt(f32[6144]{0} %add.31)
+  %p2.38 = f32[768]{0} parameter(2)
+  %broadcast.39 = f32[12,512,768]{2,1,0} broadcast(f32[768]{0} %p2.38), dimensions={2}
+  %get-tuple-element.26 = f32[1,6144,768]{2,1,0} get-tuple-element((f32[1,6144,768]{2,1,0}, f32[6144]{0}, f32[6144]{0}) %batch-norm-training.25), index=0
+  %reshape.33 = f32[12,512,768]{2,1,0} reshape(f32[1,6144,768]{2,1,0} %get-tuple-element.26)
+  %p0.2 = f32[768]{0} parameter(0)
+  %broadcast.34 = f32[12,512,768]{2,1,0} broadcast(f32[768]{0} %p0.2), dimensions={2}
+  %multiply.35 = f32[12,512,768]{2,1,0} multiply(f32[12,512,768]{2,1,0} %reshape.33, f32[12,512,768]{2,1,0} %broadcast.34)
+  %constant.1 = f32[] constant(1)
+  %broadcast.36 = f32[12,512,768]{2,1,0} broadcast(f32[] %constant.1), dimensions={}
+  %multiply.37 = f32[12,512,768]{2,1,0} multiply(f32[12,512,768]{2,1,0} %multiply.35, f32[12,512,768]{2,1,0} %broadcast.36)
+  %add.40 = f32[12,512,768]{2,1,0} add(f32[12,512,768]{2,1,0} %broadcast.39, f32[12,512,768]{2,1,0} %multiply.37)
+  ROOT %tuple.41 = (f32[12,512,768]{2,1,0}) tuple(f32[12,512,768]{2,1,0} %add.40)
+}
