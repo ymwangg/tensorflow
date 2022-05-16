@@ -1192,15 +1192,19 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
 
   tensorflow::thread::ThreadPool* thread_pool;
   absl::optional<tensorflow::thread::ThreadPool> overriding_thread_pool;
+  /*
   switch (
       module_config.debug_options().xla_gpu_force_compilation_parallelism()) {
     case 0:
+      std::cout << "threadpool=0" << std::endl;
       thread_pool = options.thread_pool;
       break;
     case 1:
+      std::cout << "threadpool=1" << std::endl;
       thread_pool = nullptr;
       break;
     default:
+      std::cout << "threadpool=default" << std::endl;
       overriding_thread_pool.emplace(
           tensorflow::Env::Default(), "",
           module_config.debug_options()
@@ -1208,8 +1212,15 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
       thread_pool = &*overriding_thread_pool;
       break;
   }
+  */
+  const char* env = std::getenv("OMP_NUM_THREADS");
+  int num_threads = env != nullptr ? std::atol(env) : 1;
+  overriding_thread_pool.emplace(
+      tensorflow::Env::Default(), "", num_threads);
+  thread_pool = &*overriding_thread_pool;
 
   if (!thread_pool) {
+    std::cout << "No thread pool" << std::endl;
     return compile_single_module(llvm_module.get(), /*relocatable=*/false,
                                  /*shard_number=*/absl::nullopt);
   }
@@ -1217,6 +1228,7 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
   // Test whether LinkModules is supported.
   if (this->LinkModules(stream_exec, {}).status().code() ==
       tensorflow::error::Code::UNIMPLEMENTED) {
+    std::cout << "LinkModules is not supported" << std::endl;
     return compile_single_module(llvm_module.get(), /*relocatable=*/false,
                                  /*shard_number=*/absl::nullopt);
   }
@@ -1242,6 +1254,8 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
   std::vector<StatusOr<BackendCompileResult>> compile_results(
       llvm_modules.size());
   tensorflow::BlockingCounter counter(llvm_modules.size());
+  std::cout << "llvm_modles.size = " << llvm_modules.size() << std::endl;
+  std::cout << "thread_pool num_threads = " << thread_pool->NumThreads() << std::endl;
   for (int i = 0; i < llvm_modules.size(); i++) {
     thread_pool->Schedule(
         [&compile_results, compile_single_module, i, &llvm_modules, &counter] {
