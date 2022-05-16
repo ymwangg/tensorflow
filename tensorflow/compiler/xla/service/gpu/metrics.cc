@@ -33,11 +33,13 @@ auto* compile_time_usecs_histogram = tensorflow::monitoring::Sampler<1>::New(
 
 void RecordHloPassesDuration(const uint64_t time_usecs) {
   static auto* cell = compile_time_usecs_histogram->GetCell("hlo_passes");
+  std::cout << "hlo_pass = " << time_usecs / 1e6 << std::endl;
   cell->Add(time_usecs);
 }
 
 void RecordHloToLlvmDuration(const uint64_t time_usecs) {
   static auto* cell = compile_time_usecs_histogram->GetCell("hlo_to_llvm");
+  std::cout << "hlo_llvm_time = " << time_usecs / 1e6 << std::endl;
   cell->Add(time_usecs);
 }
 
@@ -46,23 +48,27 @@ void RecordLlvmPassesAndLlvmToPtxDuration(const uint64_t time_usecs) {
   // optimization and llvm to ptx compilation, and now changing it would
   // invalidate historical data.
   static auto* cell = compile_time_usecs_histogram->GetCell("llvm_to_ptx");
+  std::cout << "llvm_passes_llvm_to_ptx_time = " << time_usecs / 1e6 << std::endl;
   cell->Add(time_usecs);
 }
 
 void RecordLlvmPassesDuration(const uint64_t time_usecs) {
   static auto* cell = compile_time_usecs_histogram->GetCell("llvm_passes");
+  std::cout << "llvm_pass_time = " << time_usecs / 1e6 << std::endl;
   cell->Add(time_usecs);
 }
 
 void RecordLlvmToPtxDuration(const uint64_t time_usecs) {
   // 'llvm_to_ptx' is taken and can't be changed without invalidating
   // historical data.
+  std::cout << "llvm_ptx = " << time_usecs / 1e6 << std::endl;
   static auto* cell = compile_time_usecs_histogram->GetCell("llvm_to_ptx_only");
   cell->Add(time_usecs);
 }
 
 void RecordPtxToCubinDuration(const uint64_t time_usecs) {
   static auto* cell = compile_time_usecs_histogram->GetCell("ptx_to_cubin");
+  std::cout << "ptx_cubin_time = " << time_usecs / 1e6 << std::endl;
   cell->Add(time_usecs);
 }
 
