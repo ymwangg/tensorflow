@@ -46,6 +46,7 @@ limitations under the License.
 #include "tensorflow/core/lib/strings/proto_serialization.h"
 #include "tensorflow/core/platform/fingerprint.h"
 #include "tensorflow/core/platform/types.h"
+#include "tensorflow/core/platform/threadpool.h"
 
 namespace tensorflow {
 
@@ -105,6 +106,7 @@ class XRTCompileOp : public OpKernel {
   Status Compile(OpKernelContext* ctx,
                  const xrt::XLAComputation& computation_proto,
                  std::unique_ptr<xla::LocalExecutable>* program);
+  std::unique_ptr<tensorflow::thread::ThreadPool> thread_pool_ptr;
 };
 
 Status CompilationCacheKey(const xrt::XLAComputation& computation,
@@ -118,7 +120,14 @@ Status CompilationCacheKey(const xrt::XLAComputation& computation,
   return Status::OK();
 }
 
-XRTCompileOp::XRTCompileOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
+XRTCompileOp::XRTCompileOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
+  const char* nproc_str = std::getenv("NPROC");
+  int nproc = 0;
+  if (nproc_str && absl::SimpleAtoi(nproc_str, &nproc) && nproc > 0) {
+    std::cout << "[XRT] setting xrt_thread_pool of size " << nproc << std::endl;
+    thread_pool_ptr = std::make_unique<tensorflow::thread::ThreadPool>(tensorflow::Env::Default(), "xrt_thread_pool", nproc);
+  }
+}
 
 Status XRTCompileOp::Compile(OpKernelContext* ctx,
                              const xrt::XLAComputation& computation_proto,
@@ -166,6 +175,13 @@ Status XRTCompileOp::Compile(OpKernelContext* ctx,
   if (config.has_debug_options()) {
     *build_options.mutable_debug_options() =
         BuildXlaDebugOptions(config.debug_options());
+  }
+  if (!build_options.compile_thread_pool()) {
+    std::cout << "[XRT] XRT has no thread pool" << std::endl;
+    if (thread_pool_ptr.get()) {
+      std::cout << "[XRT] Setting the build options thread pool to ops thread pool" << std::endl;
+      build_options.set_compile_thread_pool(thread_pool_ptr.get());
+    }
   }
   if (config.has_device_assignment()) {
     xla::DeviceAssignment device_assignment(num_replicas,

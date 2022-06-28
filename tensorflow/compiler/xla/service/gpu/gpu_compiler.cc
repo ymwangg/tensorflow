@@ -1192,7 +1192,6 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
 
   tensorflow::thread::ThreadPool* thread_pool;
   absl::optional<tensorflow::thread::ThreadPool> overriding_thread_pool;
-  /*
   switch (
       module_config.debug_options().xla_gpu_force_compilation_parallelism()) {
     case 0:
@@ -1212,12 +1211,13 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
       thread_pool = &*overriding_thread_pool;
       break;
   }
-  */
   const char* env = std::getenv("OMP_NUM_THREADS");
   int num_threads = env != nullptr ? std::atol(env) : 1;
   overriding_thread_pool.emplace(
       tensorflow::Env::Default(), "", num_threads);
-  thread_pool = &*overriding_thread_pool;
+  if (thread_pool == nullptr) {
+    thread_pool = &*overriding_thread_pool;
+  }
 
   if (!thread_pool) {
     std::cout << "No thread pool" << std::endl;
