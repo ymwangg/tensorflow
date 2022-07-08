@@ -19,7 +19,9 @@ limitations under the License.
 #include <set>
 #include <vector>
 
+#include "tensorflow/compiler/xla/service/hlo_casting_utils.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
+#include "tensorflow/compiler/xla/service/hlo_instructions.h"
 #include "tensorflow/compiler/xla/service/hlo_opcode.h"
 #include "tensorflow/compiler/xla/service/llvm_ir/buffer_assignment_util.h"
 #include "tensorflow/core/lib/core/status.h"
@@ -28,6 +30,22 @@ limitations under the License.
 namespace xla {
 
 namespace gpu {
+
+bool GetEnvBool(const char* name, bool defval) {
+  const char* env = getenv(name);
+  if (env == nullptr) {
+    return defval;
+  }
+  if (std::strcmp(env, "true") == 0) {
+    return true;
+  }
+  if (std::strcmp(env, "false") == 0) {
+    return false;
+  }
+  int int_env;
+  bool has_int = absl::SimpleAtoi(env, &int_env);
+  return has_int && int_env != 0;
+}
 
 StatusOr<bool> GpuSanitizeConstantNames::Run(HloModule* module) {
   bool changed = false;
@@ -63,6 +81,45 @@ StatusOr<bool> GpuSanitizeConstantNames::Run(HloModule* module) {
     }
   }
 
+  static const bool fold_constant = GetEnvBool("XLA_FOLD_CONSTANT", false);
+  if (fold_constant) {
+    std::vector<HloInstruction*> reduce_list;
+    for (HloInstruction* instr : module->entry_computation()->instructions()) {
+      if (instr->opcode() == HloOpcode::kReduce) {
+        reduce_list.push_back(instr);
+      }
+    }
+    for (HloInstruction* instr : reduce_list) {
+      module->entry_computation()->CreateFusionInstruction(
+          {instr}, HloInstruction::FusionKind::kLoop);
+    }
+
+    for (HloComputation* computation : module->computations()) {
+      for (HloInstruction* instr : computation->instructions()) {
+        if (instr->opcode() == HloOpcode::kFusion) {
+          HloFusionInstruction* fused_instr =
+              DynCast<HloFusionInstruction>(instr);
+          // std::cout << fused_instr->ToProto().SerializeAsString() <<
+          // std::endl;
+          std::vector<HloInstruction*> fuse_list;
+          for (HloInstruction* operand : fused_instr->operands()) {
+            if (operand->opcode() == HloOpcode::kConstant) {
+              fuse_list.push_back(operand);
+            }
+          }
+          for (HloInstruction* operand : fuse_list) {
+            std::cout << xla::ShapeUtil::HumanString(operand->shape())
+                      << xla::ShapeUtil::ByteSizeOfElements(operand->shape())
+                      << std::endl;
+            fused_instr->FuseInstruction(operand);
+            changed = true;
+          }
+          // std::cout << fused_instr->ToProto().SerializeAsString() <<
+          // std::endl;
+        }
+      }
+    }
+  }
   return changed;
 }  // namespace gpu
 

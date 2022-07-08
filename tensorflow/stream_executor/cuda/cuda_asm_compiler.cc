@@ -48,6 +48,9 @@ port::StatusOr<std::vector<uint8>> LinkGpuAsm(
   gpu::ScopedActivateContext activation(context);
 
   CUlinkState link_state;
+  CUjit_option options[] = {CU_JIT_LTO};
+  void* values[] = {(void*)1};
+  RETURN_IF_CUDA_ERROR(cuLinkCreate(1, options, values, &link_state));
   RETURN_IF_CUDA_ERROR(cuLinkCreate(0, nullptr, nullptr, &link_state));
   for (auto& image : images) {
     auto status = cuLinkAddData(link_state, CU_JIT_INPUT_CUBIN,

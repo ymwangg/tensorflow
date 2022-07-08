@@ -178,6 +178,13 @@ limitations under the License.
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow/core/util/env_var.h"
 
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/IR/PassManager.h"
+#include "llvm/Analysis/LoopAnalysisManager.h"
+#include "llvm/Passes/OptimizationLevel.h"
+#include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Transforms/Scalar/SCCP.h"
+
 #if XLA_ENABLE_XLIR
 #include "tensorflow/compiler/mlir/tfrt/transforms/lmhlo_to_gpu/pass_utils.h"
 #include "tfrt/gpu/gpu_executor.h"  // from @tf_runtime
@@ -797,11 +804,12 @@ StatusOr<std::unique_ptr<HloModule>> GpuCompiler::RunHloPasses(
   tensorflow::profiler::TraceMe activity(
       [&] { return absl::StrCat("HLO Transforms:", module->name()); },
       tensorflow::profiler::TraceMeLevel::kInfo);
+  LOG(INFO) << "--------------RunHloPasses 0--------------";
   TF_RETURN_IF_ERROR(
       OptimizeHloModule(module.get(), stream_exec, options.device_allocator));
-
+  LOG(INFO) << "--------------RunHloPasses 1--------------";
   TF_RETURN_IF_ERROR(PrepareHloModuleForIrEmitting(module.get()));
-
+  LOG(INFO) << "--------------RunHloPasses 2--------------";
   uint64_t end_usecs = tensorflow::Env::Default()->NowMicros();
 
   // This won't record values for calls that error out (because if they error
@@ -1192,7 +1200,6 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
 
   tensorflow::thread::ThreadPool* thread_pool;
   absl::optional<tensorflow::thread::ThreadPool> overriding_thread_pool;
-  /*
   switch (
       module_config.debug_options().xla_gpu_force_compilation_parallelism()) {
     case 0:
@@ -1212,12 +1219,13 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
       thread_pool = &*overriding_thread_pool;
       break;
   }
-  */
   const char* env = std::getenv("OMP_NUM_THREADS");
   int num_threads = env != nullptr ? std::atol(env) : 1;
-  overriding_thread_pool.emplace(
-      tensorflow::Env::Default(), "", num_threads);
-  thread_pool = &*overriding_thread_pool;
+  if (thread_pool == nullptr) {
+    overriding_thread_pool.emplace(
+        tensorflow::Env::Default(), "", num_threads);
+    thread_pool = &*overriding_thread_pool;
+  }
 
   if (!thread_pool) {
     std::cout << "No thread pool" << std::endl;
@@ -1242,6 +1250,30 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
     }
   }
 
+  {
+    // llvm::PassBuilder passBuilder;
+    // llvm::LoopAnalysisManager loopAnalysisManager; // true is just to output debug info
+    // llvm::FunctionAnalysisManager functionAnalysisManager;
+    // llvm::CGSCCAnalysisManager cGSCCAnalysisManager;
+    // llvm::ModuleAnalysisManager moduleAnalysisManager;
+    // passBuilder.registerModuleAnalyses(moduleAnalysisManager);
+    // passBuilder.registerCGSCCAnalyses(cGSCCAnalysisManager);
+    // passBuilder.registerFunctionAnalyses(functionAnalysisManager);
+    // passBuilder.registerLoopAnalyses(loopAnalysisManager);
+    // // This is the important line:
+    // passBuilder.crossRegisterProxies(
+    //     loopAnalysisManager, functionAnalysisManager, cGSCCAnalysisManager, moduleAnalysisManager);
+    // llvm::ModulePassManager modulePassManager =
+    //     passBuilder.buildO0DefaultPipeline(llvm::OptimizationLevel::O0);
+    // modulePassManager.run(*llvm_module, moduleAnalysisManager);
+    // llvm::ModuleAnalysisManager moduleAnalysisManager;
+    // llvm::ModulePassManager mpm;
+    // llvm::FunctionPassManager fpm;
+    // fpm.addPass(llvm::SCCPPass());
+    // mpm.addPass(createModuleToFunctionPassAdaptor(std::move(fpm)));
+    // mpm.run(*llvm_module, moduleAnalysisManager);
+  }
+
   llvm::SplitModule(
       *llvm_module,
       std::max<unsigned>(
@@ -1260,6 +1292,9 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
     thread_pool->Schedule(
         [&compile_results, compile_single_module, i, &llvm_modules, &counter] {
           llvm::Module* original_module = llvm_modules[i].get();
+          // not working
+          // std::unique_ptr<llvm::Module> clone = llvm::CloneModule(*llvm_modules[i].get());
+          // llvm::Module* original_module = clone.get();
           llvm::LLVMContext context;
           std::string buffer;
           llvm::raw_string_ostream error(buffer);
@@ -1318,6 +1353,7 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
 StatusOr<std::unique_ptr<Executable>> GpuCompiler::RunBackend(
     std::unique_ptr<HloModule> module, se::StreamExecutor* stream_exec,
     const CompileOptions& options) {
+  LOG(INFO) << "-----------RunBackend0-----------";
   VLOG(1) << "Starting to compile HLO module " << module->name();
   XLA_SCOPED_LOGGING_TIMER("GpuCompiler::RunBackend");
   std::string slow_compilation_msg =
@@ -1343,7 +1379,7 @@ StatusOr<std::unique_ptr<Executable>> GpuCompiler::RunBackend(
       LOG(ERROR) << "--xla_hlo_profile for GPU is unsupported.";
     }
   }
-
+  LOG(INFO) << "-----------RunBackend0-1-----------";
   CompileModuleResults compile_module_results;
   TF_RETURN_IF_ERROR(CompileModuleToLlvmIrImpl(
       module.get(), &llvm_context, target_triple_, data_layout_,
@@ -1353,6 +1389,7 @@ StatusOr<std::unique_ptr<Executable>> GpuCompiler::RunBackend(
       stream_exec->GetDeviceDescription().rocm_compute_capability(),
       GetCanShareBuffer(), pointer_size_, &compile_module_results,
       stream_exec));
+  LOG(INFO) << "-----------RunBackend1-----------";
 
   if (user_pre_optimization_hook_) {
     user_pre_optimization_hook_(*compile_module_results.llvm_module);
@@ -1374,6 +1411,7 @@ StatusOr<std::unique_ptr<Executable>> GpuCompiler::RunBackend(
       CompileToTargetBinary(module->config(),
                             std::move(compile_module_results.llvm_module),
                             stream_exec, options, module.get()));
+  LOG(INFO) << "-----------RunBackend2-----------";
   if (DumpingEnabledForHloModule(*module) &&
       absl::holds_alternative<OwnedThunkSchedule>(
           compile_module_results.executable)) {
@@ -1410,7 +1448,7 @@ StatusOr<std::unique_ptr<Executable>> GpuCompiler::RunBackend(
     DCHECK_NE("", ir_module_string_before_opt);
     gpu_executable->set_ir_module_string(ir_module_string_before_opt);
   }
-
+  LOG(INFO) << "-----------RunBackend3-----------";
   // Dump computation proto state and buffer assignment for debug and test, if
   // dump or embed_ir_in_executable is enabled.
   if (embed_ir_in_executable ||
@@ -1425,6 +1463,7 @@ StatusOr<std::unique_ptr<Executable>> GpuCompiler::RunBackend(
     gpu_executable->set_hlo_proto(std::move(hlo_proto));
   }
   gpu_executable->set_debug_info(buffer_assignment->GetStats().ToString());
+  LOG(INFO) << "-----------RunBackend4-----------";
   return static_cast<std::unique_ptr<Executable>>(std::move(gpu_executable));
 }
 

@@ -159,6 +159,14 @@ Status XRTCompileOp::Compile(OpKernelContext* ctx,
     argument_layout_ptrs[i] = &argument_layouts[i];
   }
   xla::ExecutableBuildOptions build_options;
+  absl::optional<tensorflow::thread::ThreadPool> pool;
+  std::cout << "XRT threadpool" << std::endl;
+  const char* env = std::getenv("XRT_NUM_THREADS");
+  int num_threads = env != nullptr ? std::atol(env) : 1;
+  if (num_threads > 1) {
+    pool.emplace(tensorflow::Env::Default(), "xrt_executable_build", num_threads);
+    build_options.set_compile_thread_pool(&*pool);
+  }
   build_options.set_device_ordinal(device_ref.device_ordinal());
   build_options.set_num_replicas(num_replicas);
   build_options.set_result_layout(xla::Shape(config.program_shape().result()));

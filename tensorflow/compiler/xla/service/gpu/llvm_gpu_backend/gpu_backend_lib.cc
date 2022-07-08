@@ -511,6 +511,109 @@ void NVPTXBackendInit(const HloModuleConfig& hlo_module_config) {
 
 namespace nvptx {
 
+StatusOr<std::string> OptimizeModule(
+    llvm::Module* module, GpuVersion gpu_version,
+    const HloModuleConfig& hlo_module_config,
+    const std::string& libdevice_dir_path,
+    std::function<void(llvm::TargetMachine*)> configure_target) {
+  static absl::once_flag backend_init_flag;
+  absl::call_once(backend_init_flag, NVPTXBackendInit, hlo_module_config);
+
+  std::unique_ptr<llvm::TargetMachine> target_machine;
+  {
+    tensorflow::profiler::TraceMe activity(
+        [&] { return absl::StrCat("Compiling IR:", module->getName().str()); },
+        tensorflow::profiler::TraceMeLevel::kInfo);
+    XLA_SCOPED_LOGGING_TIMER("Compile module " + module->getName().str());
+
+    // If the module has no functions or globals, there's nothing to compile.
+    // Just return an empty string.
+    if (module->empty() && module->global_empty()) {
+      VLOG(2) << "Module '" << module->getName().str()
+              << "' is empty. Skipping compilation.";
+      return std::string();
+    }
+
+    auto compute_capability =
+        absl::get_if<se::CudaComputeCapability>(&gpu_version);
+    if (!compute_capability) {
+      return xla::InternalError(
+          "Incompatible compute capability was specified.");
+    }
+
+    llvm::Triple default_target_triple("nvptx64-unknown-unknown");
+    // Construct LLVM TargetMachine for NVPTX.
+    std::unique_ptr<llvm::TargetMachine> target_machine = NVPTXGetTargetMachine(
+        default_target_triple, *compute_capability, hlo_module_config);
+
+    // Apply target machine configuration from call-back if available.
+    if (configure_target) {
+      configure_target(target_machine.get());
+    }
+
+    uint64_t start_usecs = tensorflow::Env::Default()->NowMicros();
+
+    // Link with libdevice, and optimize the LLVM module.
+    TF_RETURN_IF_ERROR(LinkAndOptimizeModule(
+        module, gpu_version, hlo_module_config, libdevice_dir_path,
+        NVPTXTargetModuleLinker, default_target_triple, target_machine.get(),
+        kDefaultInlineThreshold));
+
+    uint64_t end_usecs = tensorflow::Env::Default()->NowMicros();
+    RecordLlvmPassesDuration(end_usecs - start_usecs);
+
+    start_usecs = tensorflow::Env::Default()->NowMicros();
+  }
+  return std::string();
+}
+
+StatusOr<std::string> ModuleToPtx(
+    llvm::Module* module, GpuVersion gpu_version,
+    const HloModuleConfig& hlo_module_config,
+    const std::string& libdevice_dir_path,
+    std::function<void(llvm::TargetMachine*)> configure_target) {
+  static absl::once_flag backend_init_flag;
+  absl::call_once(backend_init_flag, NVPTXBackendInit, hlo_module_config);
+
+  std::string ptx;
+  std::unique_ptr<llvm::TargetMachine> target_machine;
+  {
+    tensorflow::profiler::TraceMe activity(
+        [&] { return absl::StrCat("Compiling IR:", module->getName().str()); },
+        tensorflow::profiler::TraceMeLevel::kInfo);
+    XLA_SCOPED_LOGGING_TIMER("Compile module " + module->getName().str());
+
+    // If the module has no functions or globals, there's nothing to compile.
+    // Just return an empty string.
+    if (module->empty() && module->global_empty()) {
+      VLOG(2) << "Module '" << module->getName().str()
+              << "' is empty. Skipping compilation.";
+      return std::string();
+    }
+
+    auto compute_capability =
+        absl::get_if<se::CudaComputeCapability>(&gpu_version);
+    if (!compute_capability) {
+      return xla::InternalError(
+          "Incompatible compute capability was specified.");
+    }
+
+    llvm::Triple default_target_triple("nvptx64-unknown-unknown");
+    // Construct LLVM TargetMachine for NVPTX.
+    std::unique_ptr<llvm::TargetMachine> target_machine = NVPTXGetTargetMachine(
+        default_target_triple, *compute_capability, hlo_module_config);
+
+    // Apply target machine configuration from call-back if available.
+    if (configure_target) {
+      configure_target(target_machine.get());
+    }
+
+    // Lower optimized LLVM module to PTX.
+    ptx = EmitModuleToPTX(module, target_machine.get());
+  }
+  return ptx;
+}
+
 StatusOr<std::string> CompileToPtx(
     llvm::Module* module, GpuVersion gpu_version,
     const HloModuleConfig& hlo_module_config,

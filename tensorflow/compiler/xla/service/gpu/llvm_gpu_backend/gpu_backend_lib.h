@@ -44,6 +44,18 @@ StatusOr<std::string> CompileToPtx(
     const HloModuleConfig& hlo_module_config,
     const std::string& libdevice_dir_path,
     std::function<void(llvm::TargetMachine*)> configure_target = nullptr);
+
+StatusOr<std::string> OptimizeModule(
+    llvm::Module* module, GpuVersion gpu_version,
+    const HloModuleConfig& hlo_module_config,
+    const std::string& libdevice_dir_path,
+    std::function<void(llvm::TargetMachine*)> configure_target = nullptr);
+
+StatusOr<std::string> ModuleToPtx(
+    llvm::Module* module, GpuVersion gpu_version,
+    const HloModuleConfig& hlo_module_config,
+    const std::string& libdevice_dir_path,
+    std::function<void(llvm::TargetMachine*)> configure_target = nullptr);
 }  // namespace nvptx
 
 namespace amdgpu {
