@@ -300,6 +300,7 @@ cc_library(
         "//tensorflow/compiler/xla/service:while_loop_invariant_code_motion",
         "//tensorflow/compiler/xla/service:while_loop_simplifier",
         "//tensorflow/compiler/xla/service:zero_sized_hlo_elimination",
+        "//tensorflow/compiler/xla/service:localize_constant",
         "//tensorflow/compiler/xla/service/llvm_ir:llvm_command_line_options",
         "//tensorflow/core/platform:errors",
         "//tensorflow/core/platform:status",

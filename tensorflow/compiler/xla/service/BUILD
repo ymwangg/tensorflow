@@ -5139,6 +5139,21 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "localize_constant",
+    srcs = ["localize_constant.cc"],
+    hdrs = ["localize_constant.h"],
+    deps = [
+        ":hlo",
+        ":hlo_pass",
+        "//tensorflow/compiler/xla:literal",
+        "//tensorflow/compiler/xla:shape_util",
+        "//tensorflow/compiler/xla:status_macros",
+        "//tensorflow/compiler/xla:util",
+        "//tensorflow/core:lib",
+    ],
+)
+
 tf_cc_test(
     name = "zero_sized_hlo_elimination_test",
     srcs = ["zero_sized_hlo_elimination_test.cc"],

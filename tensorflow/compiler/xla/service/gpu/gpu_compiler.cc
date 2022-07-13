@@ -159,6 +159,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/while_loop_simplifier.h"
 #include "tensorflow/compiler/xla/service/while_loop_trip_count_annotator.h"
 #include "tensorflow/compiler/xla/service/zero_sized_hlo_elimination.h"
+#include "tensorflow/compiler/xla/service/localize_constant.h"
 #include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/compiler/xla/types.h"
 #include "tensorflow/compiler/xla/util.h"
@@ -658,6 +659,12 @@ Status GpuCompiler::OptimizeHloModule(
     pipeline.AddPass<OptimizationBarrierExpander>();
     pipeline.AddPass<TupleSimplifier>();
 
+    TF_RETURN_IF_ERROR(pipeline.Run(hlo_module).status());
+  }
+
+  {
+    HloPassPipeline pipeline("localize-constant optimization");
+    pipeline.AddPass<LocalizeConstant>();
     TF_RETURN_IF_ERROR(pipeline.Run(hlo_module).status());
   }
 
