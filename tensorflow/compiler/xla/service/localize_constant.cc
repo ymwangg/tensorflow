@@ -1,8 +1,10 @@
 #include "tensorflow/compiler/xla/service/localize_constant.h"
 
 #include "tensorflow/compiler/xla/literal.h"
+#include "tensorflow/compiler/xla/service/hlo_casting_utils.h"
 #include "tensorflow/compiler/xla/service/hlo_computation.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
+#include "tensorflow/compiler/xla/service/hlo_instructions.h"
 #include "tensorflow/compiler/xla/shape_util.h"
 #include "tensorflow/compiler/xla/status_macros.h"
 #include "tensorflow/compiler/xla/util.h"
@@ -14,21 +16,46 @@ namespace xla {
 
 StatusOr<bool> LocalizeConstant::Run(HloModule* module) {
   bool changed = false;
-  for (HloComputation* comp : module->MakeNonfusionComputations()) {
-    for (HloInstruction* instruction : comp->MakeInstructionPostOrder()) {
-      if (instruction->HasSideEffect() || !instruction->shape().IsArray()) {
-        continue;
-      }
-      if (instruction->IsConstant()) {
-        Shape shape = instruction->shape();
-        if (!LayoutUtil::HasLayout(shape)) {
-          LayoutUtil::SetToDefaultLayout(&shape);
+
+  std::vector<HloInstruction*> reduce_instructions;
+  for (HloInstruction* instr: module->entry_computation()->instructions()) {
+    if (instr->opcode() == HloOpcode::kReduce) {
+      reduce_instructions.push_back(instr);
+    }
+  }
+  for (HloInstruction* instr: reduce_instructions) {
+    module->entry_computation()->CreateFusionInstruction({instr}, HloInstruction::FusionKind::kLoop);
+  }
+
+  for (HloComputation* comp : module->computations()) {
+    for (HloInstruction* instruction : comp->instructions()) {
+      // if (instruction->HasSideEffect() || !instruction->shape().IsArray()) {
+      //   continue;
+      // }
+      // if (instruction->IsConstant()) {
+      //   Shape shape = instruction->shape();
+      //   if (!LayoutUtil::HasLayout(shape)) {
+      //     LayoutUtil::SetToDefaultLayout(&shape);
+      //   }
+      //   std::cout << "Replacing constant op" << std::endl;
+      //   TF_RETURN_IF_ERROR(comp->ReplaceWithNewInstruction(
+      //       instruction,
+      //       HloInstruction::CreateConstant(Literal::CreateFromShape(shape))));
+      //   changed = true;
+      // }
+      if (instruction->opcode() == HloOpcode::kFusion) {
+        HloFusionInstruction* fusion_instr = DynCast<HloFusionInstruction>(instruction);
+        std::vector<HloInstruction*> const_operands;
+        for (HloInstruction* operand: fusion_instr->operands()) {
+          if (operand->opcode() == HloOpcode::kConstant) {
+            const_operands.push_back(operand);
+          }
         }
-        std::cout << "Replacing constant op" << std::endl;
-        TF_RETURN_IF_ERROR(comp->ReplaceWithNewInstruction(
-            instruction,
-            HloInstruction::CreateConstant(Literal::CreateFromShape(shape))));
-        changed = true;
+        for (HloInstruction* operand: const_operands) {
+          // std::cout << "localize constant operands" << std::endl;
+          fusion_instr->FuseInstruction(operand);
+          changed = true;
+        }
       }
     }
   }
