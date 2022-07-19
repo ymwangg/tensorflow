@@ -124,7 +124,6 @@ XRTCompileOp::XRTCompileOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
   const char* nproc_str = std::getenv("NPROC");
   int nproc = 0;
   if (nproc_str && absl::SimpleAtoi(nproc_str, &nproc) && nproc > 0) {
-    std::cout << "[XRT] setting xrt_thread_pool of size " << nproc << std::endl;
     thread_pool_ptr = std::make_unique<tensorflow::thread::ThreadPool>(tensorflow::Env::Default(), "xrt_thread_pool", nproc);
   }
 }
@@ -177,9 +176,7 @@ Status XRTCompileOp::Compile(OpKernelContext* ctx,
         BuildXlaDebugOptions(config.debug_options());
   }
   if (!build_options.compile_thread_pool()) {
-    std::cout << "[XRT] XRT has no thread pool" << std::endl;
     if (thread_pool_ptr.get()) {
-      std::cout << "[XRT] Setting the build options thread pool to ops thread pool" << std::endl;
       build_options.set_compile_thread_pool(thread_pool_ptr.get());
     }
   }

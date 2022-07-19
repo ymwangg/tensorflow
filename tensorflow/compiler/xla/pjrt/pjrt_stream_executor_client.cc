@@ -223,7 +223,6 @@ PjRtStreamExecutorClient::PjRtStreamExecutorClient(
           tensorflow::Env::Default(), "pjrt_thread_pool",
           std::max<int>(DefaultThreadPoolSize(), client->device_count())),
       transpose_cache_(1024) {
-  std::cout << "[PJRT] Number of threads in thread pool: " << thread_pool_.NumThreads() << std::endl;
   if (owned_allocator_ != nullptr) {
     allocator_ = owned_allocator_.get();
   } else {

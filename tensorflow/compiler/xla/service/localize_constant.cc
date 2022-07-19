@@ -29,20 +29,6 @@ StatusOr<bool> LocalizeConstant::Run(HloModule* module) {
 
   for (HloComputation* comp : module->computations()) {
     for (HloInstruction* instruction : comp->instructions()) {
-      // if (instruction->HasSideEffect() || !instruction->shape().IsArray()) {
-      //   continue;
-      // }
-      // if (instruction->IsConstant()) {
-      //   Shape shape = instruction->shape();
-      //   if (!LayoutUtil::HasLayout(shape)) {
-      //     LayoutUtil::SetToDefaultLayout(&shape);
-      //   }
-      //   std::cout << "Replacing constant op" << std::endl;
-      //   TF_RETURN_IF_ERROR(comp->ReplaceWithNewInstruction(
-      //       instruction,
-      //       HloInstruction::CreateConstant(Literal::CreateFromShape(shape))));
-      //   changed = true;
-      // }
       if (instruction->opcode() == HloOpcode::kFusion) {
         HloFusionInstruction* fusion_instr = DynCast<HloFusionInstruction>(instruction);
         std::vector<HloInstruction*> const_operands;
