@@ -1239,6 +1239,33 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
       },
       /*PreserveLocals=*/true);
 
+  std::map<std::string, llvm::Constant*> constantBufferInitializer;
+
+  // run one pass to collect constant buffers' initializers
+  for (int i = 0; i < llvm_modules.size(); i++) {
+    for (auto &gv: llvm_modules[i]->globals()) {
+      std::string gvName = gv.getGlobalIdentifier();
+      if (gvName.find("buffer_for_constant") != std::string::npos) {
+        if (gv.hasInitializer()) {
+          constantBufferInitializer[gvName] = gv.getInitializer();
+        }
+      }
+    }
+  }
+
+  // if the global variable is buffer_for_constant and external, localize it
+  for (int i = 0; i < llvm_modules.size(); i++) {
+    for (auto &gv: llvm_modules[i]->globals()) {
+      std::string gvName = gv.getGlobalIdentifier();
+      if (gvName.find("buffer_for_constant") != std::string::npos) {
+        if (!gv.hasInitializer()) {
+          gv.setInitializer(constantBufferInitializer[gvName]);
+          gv.setLinkage(llvm::GlobalValue::InternalLinkage);
+        }
+      }
+    }
+  }
+
   std::vector<StatusOr<BackendCompileResult>> compile_results(
       llvm_modules.size());
   tensorflow::BlockingCounter counter(llvm_modules.size());
