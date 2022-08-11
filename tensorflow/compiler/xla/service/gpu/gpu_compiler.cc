@@ -1230,11 +1230,45 @@ GpuCompiler::CompileToTargetBinary(const HloModuleConfig& module_config,
     }
   }
 
+  // Record the initializers of constant global variables that can later be
+  // constant-folded.
+  llvm::DenseMap<llvm::StringRef, llvm::Constant*> const_initializer_map;
+  for (llvm::GlobalVariable& gv : llvm_module->globals()) {
+    if (gv.hasName() && gv.isConstant() && gv.hasInitializer() &&
+        gv.hasExternalLinkage()) {
+      llvm::Constant* initializer = gv.getInitializer();
+      unsigned int num_elements = 0;
+      if (auto* caz =
+              llvm::dyn_cast<llvm::ConstantAggregateZero>(initializer)) {
+        num_elements = caz->getElementCount().getFixedValue();
+      }
+      if (auto* cds =
+              llvm::dyn_cast<llvm::ConstantDataSequential>(initializer)) {
+        num_elements = cds->getNumElements();
+      }
+      // Only record global variables with small number of elements
+      if (num_elements > 0 && num_elements <= 128) {
+        const_initializer_map[gv.getName()] = initializer;
+      }
+    }
+  }
+
   llvm::SplitModule(
       *llvm_module,
       std::max<unsigned>(
           1, std::min<unsigned>(thread_pool->NumThreads(), num_functions)),
       [&](std::unique_ptr<llvm::Module> module) {
+        // We want to remove the external linkage type of some constant global
+        // variables that can be constant-folded in later stage to avoid the
+        // costly global read operation since XLA gpu compiler does not support
+        // link time optimization
+        for (llvm::GlobalVariable& gv : module->globals()) {
+          if (gv.hasName() && gv.isConstant() && !gv.hasInitializer() &&
+              const_initializer_map.count(gv.getName()) != 0) {
+            gv.setInitializer(const_initializer_map[gv.getName()]);
+            gv.setLinkage(llvm::GlobalValue::InternalLinkage);
+          }
+        }
         llvm_modules.push_back(std::move(module));
       },
       /*PreserveLocals=*/true);
